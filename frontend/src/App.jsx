@@ -6,6 +6,7 @@ import ProjectDetail from "./pages/ProjectDetail";
 import ProjectSubmission from "./pages/ProjectSubmission";
 import MyProjects from "./pages/MyProjects";
 import VerificationDetail from "./pages/VerificationDetail";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 import Marketplace from "./pages/Marketplace";
 import MyOffsets from "./pages/MyOffsets";
@@ -26,25 +27,40 @@ function App() {
         {/* Public Route */}
         <Route path="/" element={<Login />} />
 
-        {/* Role-based Dashboards */}
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/registry" element={<Registry />} />
-        <Route path="/admin/audit" element={<AuditLog />} />
-        <Route path="/admin/users" element={<UserManagement />} />
+        {/* Protected Admin Routes */}
+        <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/registry" element={<Registry />} />
+          <Route path="/admin/audit" element={<AuditLog />} />
+          <Route path="/admin/users" element={<UserManagement />} />
+        </Route>
 
-        <Route path="/verifier" element={<VerifierDashboard />} />
-        <Route path="/verifier/reviews" element={<VerifierDashboard />} />
-        <Route path="/ngo" element={<NGODashboard />} />
+        {/* Protected Verifier Routes */}
+        <Route element={<ProtectedRoute allowedRoles={['verifier']} />}>
+          <Route path="/verifier" element={<VerifierDashboard />} />
+          <Route path="/verifier/reviews" element={<VerifierDashboard />} />
+          <Route path="/verifier/projects/:id" element={<VerificationDetail />} />
+        </Route>
 
-        <Route path="/corporate" element={<CorporateDashboard />} />
-        <Route path="/corporate/market" element={<Marketplace />} />
-        <Route path="/corporate/portfolio" element={<MyOffsets />} />
+        {/* Protected NGO Routes */}
+        <Route element={<ProtectedRoute allowedRoles={['ngo']} />}>
+          <Route path="/ngo" element={<NGODashboard />} />
+          <Route path="/ngo/submit" element={<ProjectSubmission />} />
+          <Route path="/ngo/projects" element={<MyProjects />} />
+        </Route>
 
-        {/* Detail Pages & Forms */}
-        <Route path="/projects/:id" element={<ProjectDetail />} />
-        <Route path="/verifier/projects/:id" element={<VerificationDetail />} />
-        <Route path="/ngo/submit" element={<ProjectSubmission />} />
-        <Route path="/ngo/projects" element={<MyProjects />} />
+        {/* Protected Corporate Routes */}
+        <Route element={<ProtectedRoute allowedRoles={['corporate']} />}>
+          <Route path="/corporate" element={<CorporateDashboard />} />
+          <Route path="/corporate/market" element={<Marketplace />} />
+          <Route path="/corporate/portfolio" element={<MyOffsets />} />
+        </Route>
+
+        {/* General Protected Routes (Accessible by multiple roles if needed, or specific logic) */}
+        {/* For now assuming only specific roles access specific details, but projects/:id might be shared? */}
+        <Route element={<ProtectedRoute allowedRoles={['admin', 'verifier', 'ngo', 'corporate']} />}>
+          <Route path="/projects/:id" element={<ProjectDetail />} />
+        </Route>
       </Routes>
     </DataProvider>
   );
