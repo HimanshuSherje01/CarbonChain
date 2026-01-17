@@ -1,14 +1,34 @@
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { useData } from '../context/DataContext';
+
+const containerStyle = {
+    width: '100%',
+    height: '100%'
+};
+
+const defaultCenter = {
+    lat: 20.5937, // Center of India
+    lng: 78.9629
+};
 
 const ProjectSubmission = () => {
     const navigate = useNavigate();
     const { addProject } = useData();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
+
+    // Google Maps Loader
+    const { isLoaded } = useJsApiLoader({
+        id: 'google-map-script',
+        googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+    });
+
+    const [mapCenter, setMapCenter] = useState(defaultCenter);
+    const [markerPosition, setMarkerPosition] = useState(null);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -18,11 +38,25 @@ const ProjectSubmission = () => {
         location: '',
         area: '',
         methodology: 'VM0033',
+        latitude: '',
+        longitude: ''
     });
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
+
+    const handleMapClick = useCallback((e) => {
+        const lat = e.latLng.lat();
+        const lng = e.latLng.lng();
+
+        setMarkerPosition({ lat, lng });
+        setFormData(prev => ({
+            ...prev,
+            latitude: lat.toFixed(6),
+            longitude: lng.toFixed(6)
+        }));
+    }, []);
 
     const handleSubmit = async () => {
         setLoading(true);
@@ -168,16 +202,33 @@ const ProjectSubmission = () => {
                                     />
                                 </div>
 
-                                {/* Interactive Map Placeholder */}
-                                <div className="h-64 bg-slate-100 rounded-lg border border-slate-300 overflow-hidden relative group cursor-crosshair">
-                                    <div className="absolute inset-0 flex items-center justify-center text-slate-400 group-hover:bg-slate-200/50 transition-colors">
-                                        <div className="text-center">
-                                            <span className="text-2xl">🗺️</span>
-                                            <p className="text-sm font-medium">Click to Pin Location</p>
+                                {/* Interactive Map */}
+                                <div className="h-64 rounded-lg overflow-hidden border border-slate-300 relative z-0">
+                                    {isLoaded ? (
+                                        <GoogleMap
+                                            mapContainerStyle={containerStyle}
+                                            center={mapCenter} // Default to India or User Location
+                                            zoom={5}
+                                            onClick={handleMapClick}
+                                            options={{
+                                                streetViewControl: false,
+                                                mapTypeControl: false,
+                                                fullscreenControl: true,
+                                            }}
+                                        >
+                                            {/* Marker for selected location */}
+                                            {markerPosition && (
+                                                <Marker
+                                                    position={markerPosition}
+                                                    animation={window.google?.maps?.Animation?.DROP}
+                                                />
+                                            )}
+                                        </GoogleMap>
+                                    ) : (
+                                        <div className="h-full w-full flex items-center justify-center bg-slate-100 text-slate-500">
+                                            Loading Map...
                                         </div>
-                                    </div>
-                                    {/* Mock Map Grid */}
-                                    <div className="w-full h-full opacity-10 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:16px_16px]"></div>
+                                    )}
                                 </div>
                             </div>
                         </div>
