@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { mockProjects, mockStats, mockTransactions } from '../data/mockData';
+import { mockStats, mockTransactions } from '../data/mockData';
+import { fetchProjects, createProject as apiCreateProject, updateProject as apiUpdateProject } from '../../Service/api';
 
 const DataContext = createContext();
 
@@ -9,11 +10,8 @@ export const useData = () => useContext(DataContext);
 export const DataProvider = ({ children }) => {
     // --- State Initialization ---
 
-    // Projects: Load from local storage or fallback to mock data
-    const [projects, setProjects] = useState(() => {
-        const saved = localStorage.getItem('cc_projects_v3');
-        return saved ? JSON.parse(saved) : mockProjects;
-    });
+    // Projects: Load from backend
+    const [projects, setProjects] = useState([]);
 
     // Wallet State
     const [wallet, setWallet] = useState({
@@ -22,12 +20,22 @@ export const DataProvider = ({ children }) => {
         balance: 0,
     });
 
-    // Persist projects whenever they change
+    // Fetch projects on mount
     useEffect(() => {
-        localStorage.setItem('cc_projects_v3', JSON.stringify(projects));
-    }, [projects]);
+        const loadProjects = async () => {
+            try {
+                const data = await fetchProjects();
+                if (data.success) {
+                    setProjects(data.projects);
+                }
+            } catch (error) {
+                console.error("Failed to load projects:", error);
+            }
+        };
+        loadProjects();
+    }, []);
 
-    // Transactions State
+    // Transactions State - keep mock for now or implement later
     const [transactions, setTransactions] = useState(() => {
         const saved = localStorage.getItem('cc_transactions');
         return saved ? JSON.parse(saved) : mockTransactions;
@@ -51,31 +59,43 @@ export const DataProvider = ({ children }) => {
         }, 800);
     };
 
-    const addProject = (newProject) => {
-        const projectWithId = {
-            ...newProject,
-            id: `CC-2024-${String(projects.length + 1).padStart(3, '0')}`,
-            status: "Submitted",
-            submissionDate: new Date().toISOString().split('T')[0],
-            estimatedCredits: Math.floor(newProject.area * 50), // Rough calc
-            evidence: [],
-            timeline: [
-                { date: new Date().toISOString().split('T')[0], status: "Submitted", note: "Project submitted via Portal." }
-            ]
-        };
-        setProjects([projectWithId, ...projects]);
-        return projectWithId.id;
+    const addProject = async (newProject) => {
+        try {
+            const data = await apiCreateProject(newProject);
+            if (data.success) {
+                setProjects(prev => [data.project, ...prev]);
+                return data.project.projectId;
+            }
+        } catch (error) {
+            console.error("Failed to add project:", error);
+            throw error;
+        }
     };
 
-    const updateProjectStatus = (id, newStatus, comment = "") => {
-        setProjects(prev => prev.map(p => {
-            if (p.id === id) {
-                const note = comment ? `Status: ${newStatus}. Note: ${comment}` : `Status updated to ${newStatus}`;
-                const newTimeline = [{ date: new Date().toISOString().split('T')[0], status: newStatus, note: note }, ...p.timeline];
-                return { ...p, status: newStatus, timeline: newTimeline };
+    const updateProjectStatus = async (id, newStatus, comment = "") => {
+        try {
+            // Optimistic update (optional, but skipping for simplicity)
+            // or fetch fresh data. Let's find local project first to update UI immediately
+            // But we need to call API
+            const projectToUpdate = projects.find(p => p.projectId === id || p._id === id); // Handle both ID types
+            if (!projectToUpdate) return;
+
+            // Create update payload
+            const updatePayload = { Status: newStatus };
+            // If we had comments/timeline in backend, we'd add them here. 
+            // For now just status.
+
+            const data = await apiUpdateProject(projectToUpdate.projectId || projectToUpdate._id, updatePayload);
+
+            if (data.success) {
+                setProjects(prev => prev.map(p =>
+                    (p.projectId === id || p._id === id) ? data.project : p
+                ));
             }
-            return p;
-        }));
+
+        } catch (error) {
+            console.error("Failed to update project status:", error);
+        }
     };
 
     const purchaseCredits = (project, amount, totalCost) => {

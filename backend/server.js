@@ -4,9 +4,8 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import connectDB from "./config/db.js";
-import { requireAuth } from "./middlewares/authMiddleware.js";
-import { requireRole } from "./middlewares/roleMiddleware.js";
-
+import requireAuth from "./middlewares/authMiddleware.js";
+import requireRole from "./middlewares/roleMiddleware.js";
 
 const app = express();
 
@@ -15,6 +14,12 @@ app.use(express.json());
 
 // Connect database
 connectDB();
+
+import projectRoutes from "./routes/project.routes.js";
+import authRoutes from "./routes/auth.routes.js";
+
+app.use("/api/projects", projectRoutes);
+app.use("/api/auth", authRoutes);
 
 // Health check
 app.get("/", (req, res) => {
