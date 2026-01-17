@@ -75,6 +75,15 @@ const Marketplace = () => {
                                     <h3 className="text-lg font-bold text-slate-900 mb-1">{project.name}</h3>
                                     <p className="text-sm text-slate-500 mb-4">by {project.developer}</p>
 
+                                    {/* Verifier Remark */}
+                                    {project.timeline && project.timeline.find(t => t.status === 'Verified') && (
+                                        <div className="mb-4 bg-teal-50 p-3 rounded border border-teal-100 text-xs text-teal-800 italic relative">
+                                            <span className="font-bold not-italic">Verifier Note:</span> "
+                                            {project.timeline.find(t => t.status === 'Verified').note}
+                                            "
+                                        </div>
+                                    )}
+
                                     <div className="flex items-center justify-between text-sm mb-6">
                                         <div>
                                             <span className="block text-slate-400 text-xs uppercase">Available</span>

@@ -118,8 +118,11 @@ export const updateProject = async (req, res) => {
             const newTimelineEvent = {
                 date: new Date().toISOString().split('T')[0],
                 status: updateData.status,
-                note: `Status updated to ${updateData.status}`
+                note: updateData.note || `Status updated to ${updateData.status}`
             };
+
+            // Remove note from updateData so it doesn't try to update a top-level field that might not exist
+            delete updateData.note;
 
             // Push to existing timeline (if it exists, otherwise init)
             if (!updateData.timeline) {
