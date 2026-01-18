@@ -81,7 +81,10 @@ export const DataProvider = ({ children }) => {
             if (!projectToUpdate) return;
 
             // Create update payload
-            const updatePayload = { Status: newStatus };
+            const updatePayload = {
+                status: newStatus,
+                note: comment
+            };
             // If we had comments/timeline in backend, we'd add them here. 
             // For now just status.
 
