@@ -6,7 +6,18 @@ import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, user } = useAuth();
+  // Redirect if user is already logged in
+  React.useEffect(() => {
+    if (user) {
+      const role = user.user_metadata?.role || 'user';
+      if (['ngo', 'verifier', 'corporate', 'admin'].includes(role)) {
+        navigate(`/${role}`);
+      }
+      // If role is 'user' or unknown, do NOT redirect to avoid loops.
+      // The UI below will handle showing a logout button.
+    }
+  }, [user, navigate]);
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [isLogin, setIsLogin] = React.useState(true);
@@ -27,26 +38,21 @@ const Login = () => {
     setError(null);
     try {
       if (isLogin) {
-        const { data, error } = await signIn({ email, password });
+        // signIn updates the context, useEffect handles navigation
+        const { error } = await signIn({ email, password });
         if (error) throw error;
-        // Redirect based on role stored in metadata
-        const role = data.user.user_metadata.role;
-        if (role) navigate(`/${role}`);
-        else navigate('/'); // Fallback
       } else {
-        const { data, error } = await signUp({
+        const { error } = await signUp({
           email,
           password,
-          options: {
-            data: { role: selectedRole },
-          },
+          role: selectedRole,
         });
         if (error) throw error;
         alert('Signup successful! Please check your email for verification.');
         setIsLogin(true);
       }
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Authentication failed");
     } finally {
       setLoading(false);
     }
@@ -80,82 +86,106 @@ const Login = () => {
           </div>
         </div>
 
-        {/* Right Side - Auth Form */}
+        {/* Right Side - Auth Form or Logged In State */}
         <div className="md:w-1/2 p-12 flex flex-col justify-center">
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">
-            {isLogin ? 'Welcome Back' : 'Create Account'}
-          </h2>
-          <p className="text-slate-500 mb-8">
-            {isLogin ? 'Enter your credentials to access the portal.' : 'Select your role and create an account.'}
-          </p>
-
-          {error && (
-            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleAuth} className="space-y-4">
-            {!isLogin && (
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                {roles.map((role) => (
-                  <div
-                    key={role.id}
-                    onClick={() => setSelectedRole(role.id)}
-                    className={`cursor-pointer border rounded-lg p-2 text-center text-xs transition-all ${selectedRole === role.id
-                      ? 'border-teal-500 bg-teal-50 text-teal-700 font-semibold'
-                      : 'border-slate-200 text-slate-600 hover:border-slate-300'
-                      }`}
-                  >
-                    {role.label}
-                  </div>
-                ))}
+          {user ? (
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-slate-800 mb-4">You are logged in</h2>
+              <p className="text-slate-600 mb-6">
+                Signed in as <strong>{user.email}</strong>.
+                <br />
+                Role: <strong>{user.user_metadata?.role || 'user'}</strong>
+              </p>
+              <div className="p-4 bg-yellow-50 text-yellow-800 rounded-lg mb-6 text-sm">
+                It seems your account role doesn't have a specific dashboard assigned.
               </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all"
-                placeholder="name@example.com"
-              />
+              <button
+                onClick={() => {
+                  localStorage.removeItem('user');
+                  window.location.reload();
+                }}
+                className="w-full bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors"
+              >
+                Sign Out
+              </button>
             </div>
+          ) : (
+            <>
+              <h2 className="text-2xl font-bold text-slate-800 mb-2">
+                {isLogin ? 'Welcome Back' : 'Create Account'}
+              </h2>
+              <p className="text-slate-500 mb-8">
+                {isLogin ? 'Enter your credentials to access the portal.' : 'Select your role and create an account.'}
+              </p>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all"
-                placeholder="••••••••"
-              />
-            </div>
+              {error && (
+                <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">
+                  {error}
+                </div>
+              )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-slate-900 text-white py-3 rounded-lg font-semibold hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Processing...' : (isLogin ? 'Sign In' : 'Sign Up')}
-            </button>
-          </form>
+              <form onSubmit={handleAuth} className="space-y-4">
+                {!isLogin && (
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    {roles.map((role) => (
+                      <div
+                        key={role.id}
+                        onClick={() => setSelectedRole(role.id)}
+                        className={`cursor-pointer border rounded-lg p-2 text-center text-xs transition-all ${selectedRole === role.id
+                          ? 'border-teal-500 bg-teal-50 text-teal-700 font-semibold'
+                          : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                          }`}
+                      >
+                        {role.label}
+                      </div>
+                    ))}
+                  </div>
+                )}
 
-          <div className="mt-6 text-center text-sm text-slate-600">
-            {isLogin ? "Don't have an account? " : "Already have an account? "}
-            <button
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-teal-600 font-medium hover:underline"
-            >
-              {isLogin ? 'Sign Up' : 'Log In'}
-            </button>
-          </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all"
+                    placeholder="name@example.com"
+                  />
+                </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all"
+                    placeholder="••••••••"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-slate-900 text-white py-3 rounded-lg font-semibold hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Processing...' : (isLogin ? 'Sign In' : 'Sign Up')}
+                </button>
+              </form>
+
+              <div className="mt-6 text-center text-sm text-slate-600">
+                {isLogin ? "Don't have an account? " : "Already have an account? "}
+                <button
+                  onClick={() => setIsLogin(!isLogin)}
+                  className="text-teal-600 font-medium hover:underline"
+                >
+                  {isLogin ? 'Sign Up' : 'Log In'}
+                </button>
+              </div>
+            </>
+          )}
           <p className="mt-8 text-center text-xs text-slate-400">
             © 2024 CarbonChain Registry. All rights reserved.
           </p>

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { useData } from '../context/DataContext';
@@ -10,12 +10,24 @@ const ProjectSubmission = () => {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
 
+    // File Refs
+    const pddInputRef = useRef(null);
+    const photoInputRef = useRef(null);
+
+    // Form and File State
+    const [files, setFiles] = useState({
+        pdd: null,
+        photos: []
+    });
+
     const [formData, setFormData] = useState({
         name: '',
         type: 'Reforestation',
         developer: 'GreenEarth NGO', // Hardcoded for demo
         description: '',
         location: '',
+        latitude: '',
+        longitude: '',
         area: '',
         methodology: 'VM0033',
     });
@@ -24,13 +36,29 @@ const ProjectSubmission = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
+    const handleFileChange = (e, type) => {
+        if (e.target.files && e.target.files[0]) {
+            if (type === 'pdd') {
+                setFiles(prev => ({ ...prev, pdd: e.target.files[0] }));
+            } else if (type === 'photo') {
+                setFiles(prev => ({ ...prev, photos: [...prev.photos, e.target.files[0]] }));
+            }
+        }
+    };
+
     const handleSubmit = async () => {
         setLoading(true);
         // Simulate API/Blockchain delay
-        setTimeout(() => {
-            addProject(formData);
-            setLoading(false);
-            navigate('/ngo');
+        // In real app, we would upload files here and get URLs
+        setTimeout(async () => {
+            try {
+                await addProject(formData); // files would be passed here too
+                setLoading(false);
+                navigate('/ngo');
+            } catch (e) {
+                console.error(e);
+                setLoading(false);
+            }
         }, 1500);
     };
 
@@ -191,9 +219,21 @@ const ProjectSubmission = () => {
                             {/* Documents */}
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-2">Primary Documentation (PDD)</label>
-                                <div className="p-6 border-2 border-dashed border-slate-300 rounded-lg flex flex-col items-center justify-center text-center bg-slate-50 hover:bg-white hover:border-teal-400 transition-colors cursor-pointer">
+                                <input
+                                    type="file"
+                                    ref={pddInputRef}
+                                    onChange={(e) => handleFileChange(e, 'pdd')}
+                                    className="hidden"
+                                    accept=".pdf,.doc,.docx"
+                                />
+                                <div
+                                    onClick={() => pddInputRef.current.click()}
+                                    className="p-6 border-2 border-dashed border-slate-300 rounded-lg flex flex-col items-center justify-center text-center bg-slate-50 hover:bg-white hover:border-teal-400 transition-colors cursor-pointer"
+                                >
                                     <span className="text-3xl mb-2">📄</span>
-                                    <p className="text-sm text-slate-600 font-medium">Drag and drop PDD PDF</p>
+                                    <p className="text-sm text-slate-600 font-medium">
+                                        {files.pdd ? files.pdd.name : "Drag and drop PDD PDF"}
+                                    </p>
                                     <p className="text-xs text-slate-400 mt-1">or click to browse</p>
                                 </div>
                             </div>
@@ -201,9 +241,19 @@ const ProjectSubmission = () => {
                             {/* Images/Photos */}
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-2">Site Photos / Drone Imagery</label>
+                                <input
+                                    type="file"
+                                    ref={photoInputRef}
+                                    onChange={(e) => handleFileChange(e, 'photo')}
+                                    className="hidden"
+                                    accept="image/*"
+                                />
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     {/* Upload Button */}
-                                    <div className="aspect-square border-2 border-dashed border-slate-300 rounded-lg flex flex-col items-center justify-center bg-slate-50 hover:bg-white hover:border-teal-400 transition-colors cursor-pointer text-slate-500 hover:text-teal-600">
+                                    <div
+                                        onClick={() => photoInputRef.current.click()}
+                                        className="aspect-square border-2 border-dashed border-slate-300 rounded-lg flex flex-col items-center justify-center bg-slate-50 hover:bg-white hover:border-teal-400 transition-colors cursor-pointer text-slate-500 hover:text-teal-600"
+                                    >
                                         <span className="text-2xl">+</span>
                                         <span className="text-xs font-medium mt-1">Upload Photo</span>
                                     </div>
@@ -214,6 +264,12 @@ const ProjectSubmission = () => {
                                     <div className="aspect-square bg-slate-200 rounded-lg relative overflow-hidden group">
                                         <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-500 font-medium bg-slate-100">site_survey.png</div>
                                     </div>
+                                    {/* Real uploaded preview could go here */}
+                                    {files.photos.map((f, i) => (
+                                        <div key={i} className="aspect-square bg-teal-50 rounded-lg relative overflow-hidden group border border-teal-200">
+                                            <div className="absolute inset-0 flex items-center justify-center text-xs text-teal-700 font-medium p-2 text-center break-all">{f.name}</div>
+                                        </div>
+                                    ))}
                                 </div>
                                 <p className="text-xs text-slate-500 mt-2">Upload at least 3 geotagged photos of the restoration site.</p>
                             </div>

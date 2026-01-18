@@ -63,6 +63,11 @@ const ProjectSchema = new mongoose.Schema(
         actionOn: {
             type: Date
         },
+        owner: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            required: true
+        },
         ipfsCid: {
             type: String,
             default: "Qm..." // Placeholder

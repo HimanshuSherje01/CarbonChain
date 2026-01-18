@@ -39,7 +39,8 @@ export const createProject = async (req, res) => {
             status: "Submitted",
             timeline,
             evidence: [],
-            ipfsCid: "QmHash..." // Placeholder or generate real one if IPFS integrated
+            ipfsCid: "QmHash...", // Placeholder or generate real one if IPFS integrated
+            owner: req.mongoUser._id
         });
 
         const savedProject = await newProject.save();
@@ -58,7 +59,15 @@ export const createProject = async (req, res) => {
 // Get all projects
 export const getAllProjects = async (req, res) => {
     try {
-        const projects = await Project.find().sort({ createdAt: -1 });
+        let query = {};
+
+        // If not admin/verifier, only show own projects
+        // Assuming req.mongoUser is populated by middleware
+        if (req.mongoUser && !['admin', 'verifier'].includes(req.mongoUser.role)) {
+            query.owner = req.mongoUser._id;
+        }
+
+        const projects = await Project.find(query).sort({ createdAt: -1 });
         res.status(200).json({ success: true, count: projects.length, projects });
     } catch (error) {
         console.error("Error fetching projects:", error);

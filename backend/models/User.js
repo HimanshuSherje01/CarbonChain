@@ -15,12 +15,17 @@ const userSchema = new mongoose.Schema(
 
     password: {
       type: String,
-      required: true,
+      // required: true, // Not required for Supabase auth users
+    },
+    supabaseId: {
+      type: String,
+      unique: true,
+      sparse: true
     },
 
     role: {
       type: String,
-      enum: ["admin", "verifier", "ngo", "corporate"],
+      enum: ["admin", "verifier", "ngo", "corporate", "user"],
       required: true,
     },
 

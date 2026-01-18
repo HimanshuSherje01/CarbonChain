@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create an axios instance
 const api = axios.create({
-    baseURL: 'http://localhost:5000/api', // Adjust if backend port differs
+    baseURL: import.meta.env.VITE_API_BASE_URL, // Adjust if backend port differs
     headers: {
         'Content-Type': 'application/json',
     },
@@ -19,6 +19,19 @@ api.interceptors.request.use(
         return config;
     },
     (error) => Promise.reject(error)
+);
+
+// Add a response interceptor to handle 401 errors
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && error.response.status === 401) {
+            // Auto-logout on 401
+            localStorage.removeItem('user');
+            window.location.href = '/';
+        }
+        return Promise.reject(error);
+    }
 );
 
 // Auth API services
